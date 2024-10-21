@@ -1,0 +1,61 @@
+version: '3.7'
+
+services:
+  # Elasticsearch service (version 7.x, no token needed)
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.10
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"  # Elasticsearch HTTP
+      - "9300:9300"  # Elasticsearch TCP transport
+    networks:
+      - elk
+
+  # Kibana service (version 7.x)
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.17.10
+    container_name: kibana
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    networks:
+      - elk
+
+  # OpenTelemetry Collector service
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: otel-collector
+    ports:
+      - "4317:4317"     # gRPC for OpenTelemetry tracing
+      - "55680:55680"   # HTTP for OpenTelemetry tracing
+    volumes:
+      - ./otel-collector-config.yml:/etc/otel-collector-config.yml
+    command: ["--config=/etc/otel-collector-config.yml"]
+    networks:
+      - elk
+
+  # Logstash service (version 7.x)
+  logstash:
+    image: docker.elastic.co/logstash/logstash:7.17.10
+    container_name: logstash
+    volumes:
+      - ./logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+    ports:
+      - "5044:5044"   # Logstash Beats input
+      - "9600:9600"   # Logstash API
+    networks:
+      - elk
+
+volumes:
+  es-data:
+    driver: local
+
+networks:
+  elk:
+    driver: bridge

@@ -1,0 +1,28 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317   # gRPC protocol
+      http:
+        endpoint: 0.0.0.0:55680  # HTTP protocol
+
+exporters:
+  logging:
+    loglevel: debug
+  elastic:
+    endpoint: "http://elasticsearch:9200"
+    indices:
+      traces: "traces-index"   # Name of the index for storing traces
+    insecure: true             # Disable TLS verification for local development
+
+processors:
+  batch:
+    timeout: 5s
+    send_batch_size: 512
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [logging, elastic]
